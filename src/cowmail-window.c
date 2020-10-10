@@ -21,40 +21,6 @@
 #include "write-window.h"
 
 
-typedef struct
-{
-  gchar  *name;
-  guchar *pkey;
-  guchar *skey;
-} identity;
-
-
-
-static identity *
-identity_new (gchar  *name,
-              guchar *pkey,
-              guchar *skey)
-{
-  identity *id = g_malloc (sizeof (identity));
-  id->name = name;
-  id->pkey = pkey;
-  id-> skey = skey;
-  return id;
-}
-
-
-
-static void
-identity_free (void *p)
-{
-  identity *id = p;
-  g_free (id->name);
-  g_free (id->pkey);
-  g_free (id-> skey);
-  g_free (id);
-}
-
-
 
 struct _CowmailWindow
 {
@@ -248,108 +214,25 @@ store_contacts (CowmailWindow *self)
 
 
 static void
-get_message (const gchar  *hostname,
-             identity     *id,
-             gchar        *hash,
-             GtkListStore *ls_messages)
+add_identity (CowmailWindow *self,
+              identity      *id)
 {
-  GSocketClient *client = g_socket_client_new ();
-  g_socket_client_set_protocol (client, G_SOCKET_PROTOCOL_SCTP);
-  GSocketConnection *connection;
-  if ((connection = g_socket_client_connect_to_host (client, hostname, 1337, NULL, NULL))) {
-    GOutputStream *ostream = g_io_stream_get_output_stream (G_IO_STREAM (connection));
-    GDataInputStream *dstream = g_data_input_stream_new (g_io_stream_get_input_stream (G_IO_STREAM (connection)));
-    gchar *command = g_strconcat ("GET ", hash, "\n", NULL);
-    g_output_stream_write (ostream, command, strlen (command), NULL, NULL);
-    g_free (command);
-    gchar *msg;
-    while ((msg = g_data_input_stream_read_line_utf8 (dstream, NULL, NULL, NULL))) {
-      gsize len;
-      gchar *cryptotext = (gchar *) g_base64_decode (msg, &len);
-      guchar message[len];
-      if (crypto_box_seal_open (message, (guchar *) cryptotext, len, id->pkey, id->skey)) {
-        GtkTreeIter iter;
-        gtk_list_store_insert_with_values (ls_messages, &iter, 0,
-                                           0, id->name,
-                                           1, "[DECRYPTION FAILED]",
-                                           2, g_get_real_time (),
-                                           -1);
-      } else {
-        GtkTreeIter iter;
-        gtk_list_store_insert_with_values (ls_messages, &iter, 0,
-                                           0, id->name,
-                                           1, (gchar *) message,
-                                           2, g_get_real_time (),
-                                           -1);
-      }
-      free (msg);
-    }
-    g_io_stream_close (G_IO_STREAM (connection), NULL, NULL);
-    g_object_unref (connection);
-  }
-  g_object_unref (client);
-}
-
-
-
-static void
-get_hash_list (const gchar  *hostname,
-               GSList       *identities,
-               GtkListStore *ls_messages)
-{
-  GSocketClient *client = g_socket_client_new ();
-  g_socket_client_set_protocol (client, G_SOCKET_PROTOCOL_SCTP);
-  GSocketConnection *connection;
-  if ((connection = g_socket_client_connect_to_host (client, hostname, 1337, NULL, NULL))) {
-    GDataOutputStream *ostream = g_data_output_stream_new (g_io_stream_get_output_stream (G_IO_STREAM (connection)));
-    GDataInputStream *dstream = g_data_input_stream_new (g_io_stream_get_input_stream (G_IO_STREAM (connection)));
-    g_data_output_stream_put_string (ostream, "LIST\n", NULL, NULL);
-    gchar *msg;
-    while ((msg = g_data_input_stream_read_line_utf8 (dstream, NULL, NULL, NULL))) {
-      gsize len;
-      g_print ("Trying to open: [%s]\n", msg);
-      gchar *cryptotext = (gchar *) g_base64_decode (msg, &len);
-      guchar message[len];
-      for (GSList *id = identities; id; id = id->next) {
-        if (!crypto_box_seal_open (message, (guchar *) cryptotext,
-                                   len,
-                                   ((identity *) id->data)->pkey,
-                                   ((identity *) id->data)->skey)) {
-          g_print("Opening succeeded.\n");
-          get_message(hostname, (identity *) id->data, (gchar *) message, ls_messages);
-        } else {
-          g_print("Opening failed.\n");
-        }
-      }
-      free (msg);
-    }
-    g_object_unref (dstream);
-    g_object_unref (ostream);
-    g_io_stream_close (G_IO_STREAM (connection), NULL, NULL);
-    g_object_unref (connection);
-  }
-  g_object_unref (client);
-}
-
-
-
-static void
-add_identity (CowmailWindow *self)
-{
-  unsigned char *pkey = g_malloc (crypto_box_PUBLICKEYBYTES);
-  unsigned char *skey = g_malloc (crypto_box_SECRETKEYBYTES);
-  crypto_box_keypair (pkey, skey);
-
-  gchar *b64pkey = (gchar *) g_base64_encode (pkey, crypto_box_PUBLICKEYBYTES);
-  gchar *b64skey = (gchar *) g_base64_encode (skey, crypto_box_SECRETKEYBYTES);
-  gchar *address = g_strndup (b64pkey, 8);
+  gchar *name;
+  gchar *b64pkey = (gchar *) g_base64_encode (id->pkey, crypto_box_PUBLICKEYBYTES);
+  gchar *b64skey = (gchar *) g_base64_encode (id->skey, crypto_box_SECRETKEYBYTES);
+  if (id->name)
+    name = id->name;
+  else
+    name = g_strndup (b64pkey, 8);
 
   GtkTreeIter iter;
   gtk_list_store_insert_with_values (self->ls_identities, &iter, 0,
-                                     0, address,
+                                     0, name,
                                      1, b64pkey,
                                      2, b64skey,
                                      -1);
+  if (!id->name)
+    g_free(name);
   g_free (b64skey);
   g_free (b64pkey);
 }
@@ -381,12 +264,29 @@ on_bn_update_clicked (GtkButton *button,
   GTK_IS_BUTTON (button);
   COWMAIL_IS_WINDOW (userdata);
   CowmailWindow *self = COWMAIL_WINDOW (userdata);
+  const gchar *hostname = gtk_entry_get_text (self->en_hostname);
 
-  GSList *identities = get_identities (self);
-  get_hash_list(gtk_entry_get_text (self->en_hostname),
-                                    identities,
-                                    self->ls_messages);
-  g_slist_free_full (identities, identity_free);
+  GSList *ids = get_identities (self);
+  GSList *heads =  list_heads(hostname, 1337, ids);
+  for (GSList *h = heads; h; h = h->next) {
+    gchar *msg = get_message (hostname, 1337, (head *) h->data);
+    GtkTreeIter iter;
+    if (msg) {
+      gtk_list_store_insert_with_values (self->ls_messages, &iter, 0,
+                                         0, ((head *) (h->data))->id->name,
+                                         1, (gchar *) msg,
+                                         2, g_get_real_time (),
+                                         -1);
+    } else {
+      gtk_list_store_insert_with_values (self->ls_messages, &iter, 0,
+                                         0, ((head *) (h->data))->id->name,
+                                         1, "[Decryption failed.]",
+                                         2, g_get_real_time (),
+                                         -1);
+    }
+  }
+  g_slist_free_full (heads, head_free);
+  g_slist_free_full (ids, identity_free);
 }
 
 
@@ -398,7 +298,9 @@ on_mn_add_id_clicked (GtkButton *button,
   GTK_IS_BUTTON (button);
   COWMAIL_IS_WINDOW (userdata);
   CowmailWindow *self = COWMAIL_WINDOW (userdata);
-  add_identity (self);
+  identity *id = identity_generate (NULL);
+  add_identity (self, id);
+  identity_free (id);
 }
 
 
@@ -462,7 +364,7 @@ cb_pkey_edited (GtkCellRenderer *cell,
   gtk_list_store_set (liststore, &iter,
                       1, new,
                       -1);
-/*
+/* TODO: autogenerate name from pubkey
   GValue value = G_VALUE_INIT;
   gtk_tree_model_get_value (GTK_TREE_MODEL (liststore), &iter, 0, &value);
   gchar *name = g_value_dup_string (&value);
@@ -521,7 +423,9 @@ cowmail_window_init (CowmailWindow *self)
   gtk_widget_init_template (GTK_WIDGET (self));
 
   if (load_identities (self) == 0) {
-    add_identity (self);
+    identity *id = identity_generate (NULL);
+    add_identity (self, id);
+    identity_free (id);
   }
   load_contacts (self);
 }

@@ -19,7 +19,7 @@
 #pragma once
 
 #include <gtk/gtk.h>
-#include <sodium/crypto_box.h>
+#include "libcowmail.h"
 
 G_BEGIN_DECLS
 

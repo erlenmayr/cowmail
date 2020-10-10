@@ -2,6 +2,7 @@ cowmail_sources = [
   'main.c',
   'cowmail-window.c',
   'write-window.c',
+  'libcowmail.c',
 ]
 
 cowmail_deps = [
