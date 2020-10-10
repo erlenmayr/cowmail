@@ -1,0 +1,123 @@
+\documentclass[a4paper]{article}
+
+\usepackage{mathpazo}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amsthm}
+
+\usepackage{tikz}
+\usetikzlibrary{positioning}
+
+
+
+\title{Cowmail}
+\author{Stephan Verbücheln}
+\date{October 9, 2020}
+
+\begin{document}
+
+\maketitle
+
+
+\begin{abstract}
+Cowmail is a new offline messaging system using a novel addressing mechanism. Its
+goal is to provide the following features:
+\begin{itemize}
+\item End-to-end encryption
+\item Sender anonymity
+\item Recipient anonymity
+\end{itemize}
+\end{abstract}
+
+\section{Introduction}
+TODO
+
+\section{Cryptography}
+\subsection{Payload encryption}
+Messages are encrypted with the recipients elliptic-curve public key. The
+encryption is based on the \textit{sealed box}, an ElGamal-based scheme provided
+by \textit{libsodium}. It is based on Curve25519\cite{eddsa}.
+
+The result is called message \textit{body}, the encryption works as follows:
+
+$$
+body = sealed\_box(message, pkey)
+$$
+
+\subsection{Addressing mechanism}
+For addressing purposes, a message \textit{head} is generated for each message.
+The message \textit{hash} is based on a hash of the encrypted message \textit{body}.
+
+$$
+hash = SHA256(body)
+$$
+$$
+head = sealed\_box(hash, pkey)
+$$
+
+\section{Protocol}
+
+\subsection{Commands}
+The protocol requests are all text-based. Message \textit{body} and
+\textit{head} are always encoded with \textit{base64}. Hashes are transferred as
+hexadecimal string. At the moment, there are only three commands.
+
+\textbf{LIST} Lists the message \textit{heads} of all messages that are
+available on the server. The command has no arguments.
+\begin{verbatim}
+LIST
+\end{verbatim}
+It returns all message \textit{heads}.
+
+\textbf{GET} receives the message \textit{body} for a given message
+\textit{hash}. The message \textit{hash} is the only argument.
+\begin{verbatim}
+GET {hash}
+\end{verbatim}
+It returns the message for the \textit{hash}.
+
+\textbf{PUT} allows to put a message. For this, two arguments are required:
+Message \textit{head} and message \textit{body}.
+\begin{verbatim}
+PUT {head} {body}
+\end{verbatim}
+No data is returned.
+
+\subsection{SCTP}
+As an experimental project, “new” technologies, the Cowmail implementation is
+based on SCTP and IPv6. SCTP is perfect for an offline messaging system. IPv6
+provides a nice basis for a decentralized network where everyone can operate
+his own server. However, in case there are problems with using SCTP in
+production (e.g. due to lack of support in Firewalls), Cowmail could easily be
+ported to TCP or UDP.
+
+\section{Side Channels}
+One has to be aware that there might be a number of side channels jeopardizing
+the anonymity. For instance, IP addresses might reveal the identity.
+
+\section{Roadmap}
+For the future, the following features are planned:
+\begin{itemize}
+\item Proof-of-work for spam prevention
+\item Server keys
+\item Transport encryption
+\item Address database
+\end{itemize}
+
+\begin{thebibliography}{ABCDE99}
+
+\bibitem[BDLSY12]{eddsa} 
+Daniel J. Bernstein, Niels Duif, Tanja Lange, Peter Schwabe, Bo-Yin Yang, 
+\textit{High-speed high-security signatures}, 
+Journal of Cryptographic Engineering,
+September 2012, Volume 2, Issue 2, pp 77-89,
+2012, Springer-Verlag
+
+\end{thebibliography}
+
+\end{document}
+

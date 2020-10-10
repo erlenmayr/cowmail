@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with glade 3.22.2 -->
+<interface>
+  <requires lib="gtk+" version="3.24"/>
+  <object class="GtkListStore" id="liststore1">
+    <columns>
+      <!-- column-name name -->
+      <column type="gchararray"/>
+      <!-- column-name address -->
+      <column type="gchar"/>
+    </columns>
+  </object>
+  <object class="GtkTextBuffer" id="tb_message"/>
+  <template class="WriteWindow" parent="GtkWindow">
+    <property name="can_focus">False</property>
+    <property name="default_width">600</property>
+    <property name="default_height">400</property>
+    <child type="titlebar">
+      <object class="GtkHeaderBar" id="header_bar">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="title">Write Mail</property>
+        <property name="show_close_button">True</property>
+        <child>
+          <object class="GtkButton" id="bn_send">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="receives_default">True</property>
+            <signal name="clicked" handler="on_bn_send_clicked" swapped="no"/>
+            <child>
+              <object class="GtkImage">
+                <property name="visible">True</property>
+                <property name="can_focus">False</property>
+                <property name="icon_name">mail-send-symbolic</property>
+              </object>
+            </child>
+            <style>
+              <class name="suggested-action"/>
+            </style>
+          </object>
+        </child>
+        <child>
+          <object class="GtkComboBox" id="cb_recipient">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+            <child>
+              <object class="GtkCellRendererText" id="rd_name"/>
+              <attributes>
+                <attribute name="text">0</attribute>
+              </attributes>
+            </child>
+          </object>
+          <packing>
+            <property name="position">1</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+    <child>
+      <object class="GtkScrolledWindow">
+        <property name="visible">True</property>
+        <property name="can_focus">True</property>
+        <property name="hexpand">True</property>
+        <property name="vexpand">True</property>
+        <property name="shadow_type">in</property>
+        <child>
+          <object class="GtkTextView" id="tv_message">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="buffer">tb_message</property>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>

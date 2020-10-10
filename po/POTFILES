@@ -1,0 +1,7 @@
+data/ch.verbuecheln.cowmail.desktop.in
+data/ch.verbuecheln.cowmail.appdata.xml.in
+data/ch.verbuecheln.cowmail.gschema.xml
+src/cowmail-window.ui
+src/main.c
+src/cowmail-window.c
+
