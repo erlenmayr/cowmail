@@ -247,12 +247,14 @@ on_bn_new_clicked (GtkButton *button,
   COWMAIL_IS_WINDOW (userdata);
   CowmailWindow *self = COWMAIL_WINDOW (userdata);
 
-  WriteWindow *win = g_object_new (WRITE_TYPE_WINDOW,
-		                               "application", gtk_window_get_application (GTK_WINDOW (self)),
-		                               NULL);
-  write_window_set_addresses (win, self->ls_contacts);
-  write_window_set_hostname (win, gtk_entry_get_text (self->en_hostname), 1337);
-  gtk_window_present (GTK_WINDOW (win));
+  if (gtk_tree_model_iter_n_children (GTK_TREE_MODEL (self->ls_contacts), NULL) > 0) {
+    WriteWindow *win = g_object_new (WRITE_TYPE_WINDOW,
+		                                 "application", gtk_window_get_application (GTK_WINDOW (self)),
+		                                 NULL);
+    write_window_set_addresses (win, self->ls_contacts);
+    write_window_set_hostname (win, gtk_entry_get_text (self->en_hostname), 1337);
+    gtk_window_present (GTK_WINDOW (win));
+  }
 }
 
 
