@@ -1,4 +1,4 @@
-/* write-window.h
+/* cowmail-write-window.h
  *
  * Copyright 2020 Stephan Verbücheln
  *
@@ -23,15 +23,20 @@
 
 G_BEGIN_DECLS
 
-#define WRITE_TYPE_WINDOW (write_window_get_type ())
+#define COWMAIL_TYPE_WRITE_WINDOW (cowmail_write_window_get_type ())
 
-G_DECLARE_FINAL_TYPE (WriteWindow, write_window, WRITE, WINDOW, GtkWindow)
+G_DECLARE_FINAL_TYPE (CowmailWriteWindow, cowmail_write_window, COWMAIL, WRITE_WINDOW, GtkWindow)
+
+/**
+ * cowmail_write_window_new:
+ * @server: server to send message to, may include port (default: 1337)
+ * @contacts: potential recipients
+ *
+ * Allocates a write window for writing a new message.
+ *
+ * Returns: newly allocated write window
+ */
+CowmailWriteWindow *cowmail_write_window_new (const gchar *server,
+                                              GList       *contacts);
 
 G_END_DECLS
-
-void write_window_set_addresses (WriteWindow  *self,
-                                 GtkListStore *recipients);
-
-void write_window_set_hostname  (WriteWindow  *self,
-                                 const gchar  *hostname,
-                                 guint16       port);

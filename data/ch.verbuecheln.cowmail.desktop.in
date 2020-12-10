@@ -1,7 +1,8 @@
 [Desktop Entry]
 Name=Cowmail
 Exec=cowmail
+Icon=ch.verbuecheln.cowmail
 Terminal=false
 Type=Application
-Categories=GTK;
+Categories=Network
 StartupNotify=true

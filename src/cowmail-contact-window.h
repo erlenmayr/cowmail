@@ -1,4 +1,4 @@
-/* cowmail-window.h
+/* cowmail-contact-window.h
  *
  * Copyright 2020 Stephan Verbücheln
  *
@@ -20,14 +20,22 @@
 
 #include <gtk/gtk.h>
 #include "libcowmail.h"
-#include "cowmail-write-window.h"
-#include "cowmail-contact-window.h"
-#include "cowmail-msg-row.h"
+#include "cowmail-contact-row.h"
 
 G_BEGIN_DECLS
 
-#define COWMAIL_TYPE_WINDOW (cowmail_window_get_type ())
+#define COWMAIL_TYPE_CONTACT_WINDOW (cowmail_contact_window_get_type ())
 
-G_DECLARE_FINAL_TYPE (CowmailWindow, cowmail_window, COWMAIL, WINDOW, GtkApplicationWindow)
+G_DECLARE_FINAL_TYPE (CowmailContactWindow, cowmail_contact_window, COWMAIL, CONTACT_WINDOW, GtkWindow)
+
+/**
+ * cowmail_contact_window_new:
+ * @contacts: pointer to a list of contacts to be managed
+ *
+ * Allocates a new contact window to manage contacts.
+ *
+ * Returns: newly allocated contact window
+ */
+CowmailContactWindow *cowmail_contact_window_new (GList **contacts);
 
 G_END_DECLS

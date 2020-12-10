@@ -19,64 +19,161 @@
 #pragma once
 
 #include <gio/gio.h>
-#include <sodium/crypto_box.h>
+
+#define COWMAIL_TAG_SIZE  16
+#define COWMAIL_KEY_SIZE  32
+#define COWMAIL_HEAD_SIZE 80
+
+#define COWMAIL_DEFAULT_PORT 1337
 
 
 
 typedef struct
 {
   gchar  *name;
-  guchar *pkey;
-  guchar *skey;
-} identity;
-
-
-
-identity   *identity_new      (gchar         *name,
-                               guchar        *pkey,
-                               guchar        *skey);
-
-
-
-identity   *identity_generate (gchar         *name);
-
-
-
-void        identity_free     (void          *p);
+  guchar  pkey[COWMAIL_KEY_SIZE];
+  guchar  skey[COWMAIL_KEY_SIZE];
+} cowmail_id;
 
 
 
 typedef struct
 {
-  gchar    *hash;
-  identity *id;
-} head;
+
+  guchar  hash[COWMAIL_KEY_SIZE];
+  guchar  secret[COWMAIL_KEY_SIZE];
+  guchar  nonce[COWMAIL_TAG_SIZE];
+} cowmail_ticket;
 
 
 
-head       *head_new          (gchar         *hash,
-                               identity      *id);
+/**
+ * cowmail_id_new:
+ * @name: name for the cowmail identity
+ *
+ * Allocates a new cowmail identity without keys.
+ *
+ * Returns: new cowmail identity
+ */
+cowmail_id        *cowmail_id_new          (const gchar           *name);
+
+/**
+ * cowmail_id_generate:
+ * @name: name for the cowmail identity
+ *
+ * Allocates a new cowmail identity with newly generated keys.
+ *
+ * Returns: new cowmail identity
+ */
+cowmail_id        *cowmail_id_generate     (const gchar           *name);
+
+/**
+ * cowmail_id_from key:
+ * @name: name for the cowmail identity
+ *
+ * Allocates a new cowmail identity based on existing keys.
+ *
+ * Returns: new cowmail identity
+ */
+cowmail_id        *cowmail_id_from_key     (const gchar           *name,
+                                            const guchar          *pkey,
+                                            const guchar          *skey);
+
+/**
+ * cowmail_id_free:
+ * @id: the cowmail identity to be freed
+ *
+ * Frees a cowmail identity. Secret keys are set to zero.
+ */
+void               cowmail_id_free         (cowmail_id            *id);
 
 
 
-void        head_free         (void          *p);
+/**
+ * cowmail_ids_store:
+ * @file: file to store the identities to
+ * @ids: list of identities
+ *
+ * Stores a list of cowmail identities to a file. Keys are encoded with base64.
+ */
+void               cowmail_ids_store       (GFile                 *file,
+                                            GList                 *ids);
+
+/**
+ * cowmail_ids_load:
+ * @file: the file to load the cowmail identities from
+ *
+ * Loads a list of cowmail identities from a file. Lines which cannot be parsed
+ * are ignored.
+ *
+ * Returns: the list of cowmail identities
+ */
+GList             *cowmail_ids_load        (GFile                 *file);
 
 
 
-void        put_message       (const gchar   *hostname,
-                               guint16        port,
-                               const gchar   *msg,
-                               const gchar   *b64pkey);
+/**
+ * cowmail_put:
+ * @server: server to connect to, may include a port (default: 1337)
+ * @msg: the message to be put
+ * @contact: the recipient's cowmail identity
+ *
+ * Puts a message for a recipient to a server.
+ */
+void               cowmail_put             (const gchar           *hostname,
+                                            const gchar           *msg,
+                                            const cowmail_id      *id);
+
+/**
+ * cowmail_list:
+ * @server: server to connect to, may include a port (default: 1337)
+ * @ids: identities to get messages for
+ *
+ * Gets all message headers from the server and attempts to decrypt them with
+ * the identities. All successfully decrypted headers are put to a list.
+ *
+ * Returns: the list of headers for the messages
+ */
+GList             *cowmail_list            (const gchar           *hostname,
+                                            const cowmail_id      *id);
+
+/**
+ * cowmail_get:
+ * @server: server to connect to, may include a port (default: 1337)
+ * @h: the header for the message
+ *
+ * Gets the message for a specific header and decrypts it
+ *
+ * Returns: the decrypted message
+ */
+gchar             *cowmail_get             (const gchar           *hostname,
+                                            cowmail_ticket        *ticket);
 
 
 
-gchar      *get_message       (const gchar   *hostname,
-                               guint16        port,
-                               head          *h);
+/**
+ * cowmail_crypto_test:
+ * @id: cowmail identity for test
+ *
+ * Runs a basic test:
+ * - generate an ElGamal key
+ * - encrypt a message
+ * - decrypt the message, verify auth tag and print result
+ */
+void               cowmail_crypto_test     (cowmail_id            *id);
 
-
-
-GSList     *list_heads        (const gchar   *hostname,
-                               guint16        port,
-                               GSList        *identities);
-
+/**
+ * cowmail_protocol_test:
+ * @server: a cowmail server
+ * @id: cowmail identity for test
+ *
+ * Runs a protocol test:
+ * - generate an ElGamal key
+ * - encrypt a message
+ * - send to server
+ * - list server messages
+ * - receive from server
+ * - decrypt the message, verify auth tag and print result
+ */
+void               cowmail_protocol_test   (const gchar           *server,
+                                            cowmail_id            *id);

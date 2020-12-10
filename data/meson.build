@@ -39,3 +39,9 @@ if compile_schemas.found()
     args: ['--strict', '--dry-run', meson.current_source_dir()]
   )
 endif
+
+scalable_iconsdir = join_paths('icons', 'hicolor', 'scalable', 'apps')
+install_data(
+  join_paths(scalable_iconsdir, 'ch.verbuecheln.cowmail.svg'),
+  install_dir: join_paths(get_option('datadir'), scalable_iconsdir)
+)

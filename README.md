@@ -16,16 +16,18 @@ for testing purposes only.
 
 ## Cryptography
 
-The cryptography is based on libsodium. For details, see /docs.
+The first prototype 0.1.0 was based on libsodium.
+
+From 0.2.0, custom cryptography is used. The implementation is based on the
+GnuTLS stack.
 
 ## Install
 
 Debian, Ubuntu etc.:
 
 ```
-$ apt install gnome-devel libsodium-dev
+$ apt install gnome-devel libgnutls28-dev
 $ meson build
 $ ninja -C build
 $ ninja -C build install
 ```
-

@@ -9,14 +9,11 @@
 \usepackage{amssymb}
 \usepackage{amsthm}
 
-\usepackage{tikz}
-\usetikzlibrary{positioning}
-
 
 
 \title{Cowmail}
 \author{Stephan Verbücheln}
-\date{October 9, 2020}
+\date{November 23, 2020}
 
 \begin{document}
 
@@ -24,8 +21,8 @@
 
 
 \begin{abstract}
-Cowmail is a new offline messaging system using a novel addressing mechanism. Its
-goal is to provide the following features:
+Cowmail is a new offline messaging system using a novel addressing mechanism.
+Its goal is to provide the following features:
 \begin{itemize}
 \item End-to-end encryption
 \item Sender anonymity
@@ -37,29 +34,58 @@ goal is to provide the following features:
 TODO
 
 \section{Cryptography}
-\subsection{Payload encryption}
 Messages are encrypted with the recipients elliptic-curve public key. The
-encryption is based on the \textit{sealed box}, an ElGamal-based scheme provided
-by \textit{libsodium}. It is based on Curve25519\cite{eddsa}.
+encryption is based on the GnuTLS implementations of AES-GCM and Curve25519 in
+an ElGamal-style scheme.
 
-The result is called message \textit{body}, the encryption works as follows:
+\subsection{Key Generation}
+The recipient Bob has a Curve25519 key pair $(b, B)$, of which the sender Alice
+knows the public part $B$. For each message, Alice generates a new key pair
+$(a, A)$. From both keys combined, a temporary AES key $k$ is derived.
+\begin{align*}
+a &= RNG(256) \\
+A &= a G \\
+k &= a B = b A \\
+\end{align*}
 
-$$
-body = sealed\_box(message, pkey)
-$$
+\subsection{Payload Encryption}
+For a clear text message $msg$, the resulting encrypted payload is called
+message $body$. The encryption is defined as follows based on the AES-GCM
+cryptotext and authentication tag.
+\begin{align*}
+iv    &= A[16..31] \\
+ctext &= encrypt(iv, k, msg) \\
+mtag  &= authenticate(iv, k, msg) \\
+body  &= mtag || ctext
+\end{align*}
 
-\subsection{Addressing mechanism}
-For addressing purposes, a message \textit{head} is generated for each message.
-The message \textit{hash} is based on a hash of the encrypted message \textit{body}.
+\subsection{Header Encryption}
+For addressing purposes, a message $head$ is generated for each message. The
+head contains the per-message Curve25519 public key as well as an encryped hash
+of the payload.
+\begin{align*}
+iv    &= A[0..15]\\
+hash  &= SHA256(body) \\
+chash &= encrypt(iv, k, msg) \\
+ctag  &= authenticate(iv, k, msg) \\
+head  &= A || chash || ctag
+\end{align*}
 
-$$
-hash = SHA256(body)
-$$
-$$
-head = sealed\_box(hash, pkey)
-$$
+\subsection{Binary Message format}
+The resulting binary message format looks as follows:
+\begin{center}
+\begin{tabular}{ |ccc|cc| }
+ \hline
+ head &&& body & \\
+ (96 bytes) &&& (variable length) & \\
+ \hline
+ A & chash & ctag & mtag & ctext \\
+ (32 byes) & (32 bytes) & (16 bytes) & (16 bytes) & (variable length) \\
+ \hline
+\end{tabular}
+\end{center}
 
-\section{Protocol}
+\section{Network Protocol}
 
 \subsection{Commands}
 The protocol requests are all text-based. Message \textit{body} and
@@ -88,11 +114,11 @@ PUT {head} {body}
 No data is returned.
 
 \subsection{SCTP}
-As an experimental project, “new” technologies, the Cowmail implementation is
+As an experimental project, “new” technologies, Cowmail's network protocol is
 based on SCTP and IPv6. SCTP is perfect for an offline messaging system. IPv6
 provides a nice basis for a decentralized network where everyone can operate
 his own server. However, in case there are problems with using SCTP in
-production (e.g. due to lack of support in Firewalls), Cowmail could easily be
+production (e.g. due to lack of support in firewalls), Cowmail could easily be
 ported to TCP or UDP.
 
 \section{Side Channels}
@@ -120,4 +146,3 @@ September 2012, Volume 2, Issue 2, pp 77-89,
 \end{thebibliography}
 
 \end{document}
-

@@ -2,6 +2,7 @@
 <gresources>
   <gresource prefix="/ch/verbuecheln/cowmail">
     <file>cowmail-window.ui</file>
-    <file>write-window.ui</file>
+    <file>cowmail-write-window.ui</file>
+    <file>cowmail-contact-window.ui</file>
   </gresource>
 </gresources>
