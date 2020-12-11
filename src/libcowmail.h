@@ -39,7 +39,6 @@ typedef struct
 
 typedef struct
 {
-
   guchar  hash[COWMAIL_KEY_SIZE];
   guchar  secret[COWMAIL_KEY_SIZE];
   guchar  nonce[COWMAIL_TAG_SIZE];
