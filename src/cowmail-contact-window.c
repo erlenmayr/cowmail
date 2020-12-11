@@ -67,7 +67,7 @@ on_bn_save_clicked (GtkButton            *self,
     c->data = id;
   }
 
-  g_list_free (*(window->contacts));
+  g_list_free_full (*(window->contacts), (GDestroyNotify) cowmail_id_free);
   *(window->contacts) = contacts;
 
   g_autofree gchar *ctpath = g_strjoin ("/", g_get_user_config_dir (), "cowmail", "contacts.conf", NULL);
