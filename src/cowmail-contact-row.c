@@ -25,7 +25,6 @@ struct _CowmailContactRow
   GtkListBoxRow  parent_instance;
 
   GtkLabel      *name;
-
   guchar         pkey[COWMAIL_KEY_SIZE];
 };
 
@@ -40,7 +39,7 @@ cowmail_contact_row_new (cowmail_id *contact)
 
   if (contact) {
     gtk_label_set_text (self->name, contact->name);
-    memcpy (self->pkey, contact->pkey, COWMAIL_KEY_SIZE);
+    memcpy (self->pkey, contact->key, COWMAIL_KEY_SIZE);
   } else {
     memset (self->pkey, 0, COWMAIL_KEY_SIZE);
   }

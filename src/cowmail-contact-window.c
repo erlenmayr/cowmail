@@ -62,8 +62,7 @@ on_bn_save_clicked (GtkButton            *self,
   for (GList *c = contacts; c; c = c->next) {
     CowmailContactRow *row = c->data;
     cowmail_id *id = cowmail_id_from_key (cowmail_contact_row_get_name (row),
-                                          cowmail_contact_row_get_pkey (row),
-                                          NULL);
+                                          cowmail_contact_row_get_pkey (row));
     c->data = id;
   }
 

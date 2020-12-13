@@ -93,7 +93,7 @@ on_bn_test_clicked (GtkButton     *button,
   COWMAIL_IS_WINDOW (self);
 
   cowmail_crypto_test (self->id);
-  cowmail_protocol_test (gtk_entry_get_text (self->en_server), self->id);
+  cowmail_protocol_test (gtk_entry_get_text (self->en_server));
 }
 
 
@@ -173,8 +173,9 @@ cowmail_window_init (CowmailWindow *self)
   } else {
     g_printerr ("COWMAIL INFO: Creating new ID.\n");
     self->id = cowmail_id_generate ("me");
-    ctlist = g_list_prepend (ctlist, self->id);
+    cowmail_id *contact = cowmail_id_to_contact (self->id);
 
+    ctlist = g_list_prepend (ctlist, contact);
     idlist = g_list_append (NULL, self->id);
     cowmail_ids_store (idfile, idlist);
     cowmail_ids_store (ctfile, ctlist);

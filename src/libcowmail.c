@@ -39,8 +39,7 @@ cowmail_id *
 cowmail_id_generate (const gchar *name)
 {
   cowmail_id *id = cowmail_id_new (name);
-  gnutls_rnd (GNUTLS_RND_KEY, id->skey, CURVE25519_SIZE);
-  curve25519_mul_g (id->pkey, id->skey);
+  gnutls_rnd (GNUTLS_RND_KEY, id->key, CURVE25519_SIZE);
   return id;
 }
 
@@ -48,14 +47,21 @@ cowmail_id_generate (const gchar *name)
 
 cowmail_id *
 cowmail_id_from_key (const gchar  *name,
-                     const guchar *pkey,
-                     const guchar *skey)
+                     const guchar *key)
 {
   cowmail_id *id = cowmail_id_new (name);
-  memcpy (id->pkey, pkey, COWMAIL_KEY_SIZE);
-  if (skey)
-    memcpy (id->skey, skey, COWMAIL_KEY_SIZE);
+  memcpy (id->key, key, COWMAIL_KEY_SIZE);
   return id;
+}
+
+
+
+cowmail_id *
+cowmail_id_to_contact (const cowmail_id *id)
+{
+  cowmail_id *contact = cowmail_id_new (id->name);
+  curve25519_mul_g (contact->key, id->key);
+  return contact;
 }
 
 
@@ -65,8 +71,7 @@ cowmail_id_free (cowmail_id *id)
 {
   if (id->name)
     g_free (id->name);
-  memset (id->pkey, 0, COWMAIL_KEY_SIZE);
-  memset (id->skey, 0, COWMAIL_KEY_SIZE);
+  memset (id->key, 0, COWMAIL_KEY_SIZE);
   g_free (id);
 }
 
@@ -81,15 +86,13 @@ cowmail_ids_store (GFile *file,
   g_autoptr (GDataOutputStream) dstream = g_data_output_stream_new (G_OUTPUT_STREAM (ostream));
   for (GList *idl = ids; idl; idl = idl->next) {
     cowmail_id *id = ((cowmail_id *) idl->data);
+
+    g_autofree gchar *key = g_base64_encode (id->key, COWMAIL_KEY_SIZE);
+    g_data_output_stream_put_string (dstream, key, NULL, &error);
+    g_data_output_stream_put_byte (dstream, ' ', NULL, &error);
+    memset (key, 0, strlen (key));
+
     g_data_output_stream_put_string (dstream, id->name, NULL, &error);
-    g_data_output_stream_put_byte (dstream, ' ', NULL, &error);
-
-    g_autofree gchar *pkey = g_base64_encode (id->pkey, COWMAIL_KEY_SIZE);
-    g_data_output_stream_put_string (dstream, pkey, NULL, &error);
-    g_data_output_stream_put_byte (dstream, ' ', NULL, &error);
-
-    g_autofree gchar *skey = g_base64_encode (id->skey, COWMAIL_KEY_SIZE);
-    g_data_output_stream_put_string (dstream, skey, NULL, &error);
     g_data_output_stream_put_byte (dstream, '\n', NULL, &error);
   }
   g_output_stream_close (G_OUTPUT_STREAM (ostream), NULL, &error);
@@ -111,20 +114,18 @@ cowmail_ids_load (GFile *file)
   GList *ids = NULL;
   gchar *line = NULL;
   while ((line = g_data_input_stream_read_line_utf8 (dstream, NULL, NULL, &error))) {
-    gchar **e = g_strsplit_set (line, " \n", 4);
-    if (e[0] && e[1] && e[2]) {
-      gsize plen;
-      g_autofree guchar *pkey = g_base64_decode (e[1], &plen);
-      gsize slen;
-      g_autofree guchar *skey = g_base64_decode (e[2], &slen);
-      if (slen == COWMAIL_KEY_SIZE && slen == COWMAIL_KEY_SIZE) {
-        cowmail_id *id = cowmail_id_from_key (e[0], pkey, skey);
+    gchar **e = g_strsplit_set (line, " \n", 2);
+    if (e[0] && e[1]) {
+      gsize len;
+      g_autofree guchar *key = g_base64_decode (e[0], &len);
+      if (key && len == COWMAIL_KEY_SIZE) {
+        cowmail_id *id = cowmail_id_from_key (e[1], key);
         ids = g_list_prepend (ids, id);
       } else {
         g_autofree gchar *fname = g_file_get_basename (file);
         g_printerr ("COWMAIL ERROR: Invalid key in file: %s\n", fname);
       }
-      memset (skey, 0, COWMAIL_KEY_SIZE);
+      memset (key, 0, COWMAIL_KEY_SIZE);
     } else {
       g_autofree gchar *fname = g_file_get_basename (file);
       g_printerr ("COWMAIL ERROR: Invalid line in file: %s\n", fname);
@@ -208,7 +209,7 @@ cowmail_encrypt_msg (const cowmail_id *id,
 
   /* compute master secret */
   guchar secret[CURVE25519_SIZE];
-  curve25519_mul (secret, skey, id->pkey);
+  curve25519_mul (secret, skey, id->key);
 
   /* encrypt payload */
   cowmail_encrypt (secret, pkey + COWMAIL_TAG_SIZE, n, cmsg, (guchar *) msg);
@@ -239,7 +240,7 @@ cowmail_decrypt_head (const cowmail_id *id,
 
   /* compute master secret */
   guchar secret[CURVE25519_SIZE];
-  curve25519_mul (secret, id->skey, pkey);
+  curve25519_mul (secret, id->key, pkey);
 
   if (cowmail_decrypt (secret, pkey, COWMAIL_KEY_SIZE, ticket->hash, chash)) {
     memcpy (ticket->secret, secret, COWMAIL_KEY_SIZE);
@@ -369,7 +370,7 @@ cowmail_crypto_test (cowmail_id *id)
 
   /* compute master secret */
   guchar secret[CURVE25519_SIZE];
-  curve25519_mul (secret, skey, id->pkey);
+  curve25519_mul (secret, skey, id->key);
 
   guchar cmsg[n + COWMAIL_TAG_SIZE];
   cowmail_encrypt (secret, pkey, n, cmsg, (guchar *) msg);
@@ -384,12 +385,15 @@ cowmail_crypto_test (cowmail_id *id)
 
 
 void
-cowmail_protocol_test (const gchar *server,
-                       cowmail_id  *id)
+cowmail_protocol_test (const gchar *server)
 {
   gchar msg[] = "This is a network protocol test.";
   g_print ("COWMAIL TEST: Sending PUT command. Message: [%s]\n", msg);
-  cowmail_put (server, msg, id);
+
+  cowmail_id *id = cowmail_id_generate ("test");
+  cowmail_id *contact = cowmail_id_to_contact (id);
+
+  cowmail_put (server, msg, contact);
   g_print ("COWMAIL TEST: Sending LIST command.\n");
   GList *hashes = cowmail_list (server, id);
 

@@ -31,8 +31,7 @@
 typedef struct
 {
   gchar  *name;
-  guchar  pkey[COWMAIL_KEY_SIZE];
-  guchar  skey[COWMAIL_KEY_SIZE];
+  guchar  key[COWMAIL_KEY_SIZE];
 } cowmail_id;
 
 
@@ -67,7 +66,7 @@ cowmail_id        *cowmail_id_new          (const gchar           *name);
 cowmail_id        *cowmail_id_generate     (const gchar           *name);
 
 /**
- * cowmail_id_from key:
+ * cowmail_id_from_key:
  * @name: name for the cowmail identity
  *
  * Allocates a new cowmail identity based on existing keys.
@@ -75,8 +74,18 @@ cowmail_id        *cowmail_id_generate     (const gchar           *name);
  * Returns: new cowmail identity
  */
 cowmail_id        *cowmail_id_from_key     (const gchar           *name,
-                                            const guchar          *pkey,
-                                            const guchar          *skey);
+                                            const guchar          *key);
+
+/**
+ * cowmail_id_to_contact:
+ * @id: the cowmail identity
+ *
+ * Creates a Cowmail contact (i.e. name and public key) based on a Cowmail
+ * identity (i.e. name and secret key).
+ *
+ * Returns: the contact
+ */
+cowmail_id        *cowmail_id_to_contact   (const cowmail_id      *id);
 
 /**
  * cowmail_id_free:
@@ -164,9 +173,9 @@ void               cowmail_crypto_test     (cowmail_id            *id);
 /**
  * cowmail_protocol_test:
  * @server: a cowmail server
- * @id: cowmail identity for test
  *
  * Runs a protocol test:
+ * - generate a Cowmail identity
  * - generate an ElGamal key
  * - encrypt a message
  * - send to server
@@ -174,5 +183,4 @@ void               cowmail_crypto_test     (cowmail_id            *id);
  * - receive from server
  * - decrypt the message, verify auth tag and print result
  */
-void               cowmail_protocol_test   (const gchar           *server,
-                                            cowmail_id            *id);
+void               cowmail_protocol_test   (const gchar           *server);
