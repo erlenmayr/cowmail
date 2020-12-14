@@ -46,6 +46,12 @@ cowmail_contact_window_new (GList **contacts)
   gtk_widget_show_all (GTK_WIDGET (self->lb_contacts));
   self->contacts = contacts;
 
+  CowmailContactRow *row = COWMAIL_CONTACT_ROW (gtk_list_box_get_row_at_index (self->lb_contacts, 0));
+  gtk_list_box_select_row (self->lb_contacts, GTK_LIST_BOX_ROW (row));
+  gtk_entry_set_text (self->en_name, cowmail_contact_row_get_name (row));
+  g_autofree gchar *b64pkey = g_base64_encode (cowmail_contact_row_get_pkey (row), COWMAIL_KEY_SIZE);
+  gtk_entry_set_text (self->en_pkey, b64pkey);
+
   return self;
 }
 
