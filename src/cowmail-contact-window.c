@@ -23,11 +23,11 @@ struct _CowmailContactWindow
   GtkWindow      parent_instance;
   GtkHeaderBar  *header_bar;
   GtkButton     *bn_save;
+  GtkInfoBar    *ib_warning;
 
   GtkListBox    *lb_contacts;
   GtkEntry      *en_name;
   GtkEntry      *en_pkey;
-  GtkLabel      *la_warning;
 
   GList        **contacts;
 };
@@ -134,9 +134,9 @@ on_en_pkey_changed (GtkEntry             *self,
   if (plen == COWMAIL_KEY_SIZE) {
     GtkListBoxRow *row = gtk_list_box_get_selected_row (window->lb_contacts);
     cowmail_contact_row_set_pkey (COWMAIL_CONTACT_ROW (row), pkey);
-    gtk_label_set_text (window->la_warning, "");
+    gtk_info_bar_set_revealed (window->ib_warning, FALSE);
   } else {
-    gtk_label_set_text (window->la_warning, "WARNING: Not a valid Cowmail key.");
+    gtk_info_bar_set_revealed (window->ib_warning, TRUE);
   }
 }
 
@@ -153,7 +153,7 @@ cowmail_contact_window_class_init (CowmailContactWindowClass *klass)
   gtk_widget_class_bind_template_child (widget_class, CowmailContactWindow, lb_contacts);
   gtk_widget_class_bind_template_child (widget_class, CowmailContactWindow, en_name);
   gtk_widget_class_bind_template_child (widget_class, CowmailContactWindow, en_pkey);
-  gtk_widget_class_bind_template_child (widget_class, CowmailContactWindow, la_warning);
+  gtk_widget_class_bind_template_child (widget_class, CowmailContactWindow, ib_warning);
 
   gtk_widget_class_bind_template_callback (widget_class, on_bn_save_clicked);
   gtk_widget_class_bind_template_callback (widget_class, on_bn_new_clicked);
